@@ -18,5 +18,5 @@ services:
 
 databases:
   - name: guardioes-natureza-db
-    plan: starter
+    plan: free
     postgresMajorVersion: "16"
