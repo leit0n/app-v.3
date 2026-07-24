@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Guardioes da Natureza</title>
+
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0e2f21" />
+
+  <!-- iOS "Add to Home Screen" support (Safari ignores the manifest for these) -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Guardiões" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="icon" href="/icons/icon-192.png" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root { --bg:#071b12; --card:#0e2f21; --text:#e8fff3; --muted:#a7d7bf; --accent:#35d07f; --danger:#ff4d4d; }
+    *{box-sizing:border-box}
+    body{margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background: radial-gradient(900px 500px at 20% 10%, #133b2a, transparent), linear-gradient(180deg, #04120c, var(--bg)); color:var(--text)}
+    header{position:sticky; top:0; z-index:5; backdrop-filter: blur(10px); background: rgba(4, 18, 12, .65); border-bottom:1px solid rgba(53,208,127,.15); padding-top: env(safe-area-inset-top)}
+    body{padding-bottom: env(safe-area-inset-bottom)}
+    .wrap{max-width:1020px; margin:0 auto; padding:16px}
+    .row{display:flex; gap:12px; align-items:center; justify-content:space-between}
+    .brand{display:flex; gap:10px; align-items:center}
+    .logo{width:40px; height:40px; border-radius:14px; background: linear-gradient(145deg,#35d07f,#0aa85a); box-shadow:0 10px 30px rgba(53,208,127,.25)}
+    .nav{display:flex; gap:8px; flex-wrap:wrap}
+    .tab{cursor:pointer; padding:10px 12px; border-radius:14px; border:1px solid rgba(167,215,191,.2); color:var(--muted); background: rgba(14,47,33,.25); user-select:none}
+    .tab.active{color:var(--text); border-color: rgba(53,208,127,.55); background: rgba(53,208,127,.12)}
+    main{padding:18px 0}
+    .grid{display:grid; grid-template-columns: 1.2fr .8fr; gap:14px}
+    @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
+    .card{background: rgba(14,47,33,.55); border:1px solid rgba(53,208,127,.18); border-radius:18px; padding:16px}
+    .title{font-size:18px; margin:0 0 8px}
+    .muted{color:var(--muted)}
+    button{cursor:pointer; border:0; border-radius:14px; padding:12px 14px; font-weight:650; background: rgba(53,208,127,.18); color:var(--text); border:1px solid rgba(53,208,127,.35)}
+    button.primary{background: linear-gradient(145deg, rgba(53,208,127,.25), rgba(10,168,90,.12)); border-color: rgba(53,208,127,.6)}
+    button.danger{background: rgba(255,77,77,.12); border-color: rgba(255,77,77,.35)}
+    button:disabled{opacity:.55; cursor:not-allowed}
+    input,select,textarea{width:100%; padding:12px 12px; border-radius:14px; border:1px solid rgba(167,215,191,.25); background: rgba(2,10,6,.15); color:var(--text); outline:none}
+    .kpi{display:flex; gap:10px; align-items:flex-start;}
+    .kpi .big{font-size:34px; font-weight:900; color: #bfffe0}
+    .kpi .small{font-size:12px; color:var(--muted)}
+    ul{margin:10px 0 0 18px}
+    a{color:inherit}
+    .toast{position:fixed; right:16px; bottom:16px; width:min(420px, calc(100vw - 32px)); background: rgba(14,47,33,.95); border:1px solid rgba(53,208,127,.25); border-radius:18px; padding:14px 16px; box-shadow:0 16px 40px rgba(0,0,0,.35); display:none}
+    .toast.show{display:block; animation: pop .22s ease-out}
+    @keyframes pop{from{transform: translateY(8px); opacity:.7} to{transform: translateY(0); opacity:1}}
+    .badge{display:inline-block; padding:6px 10px; border-radius:999px; border:1px solid rgba(53,208,127,.35); background: rgba(53,208,127,.12); font-size:12px; color:#c9ffe0}
+    .list{display:flex; flex-direction:column; gap:10px}
+    .item{display:flex; gap:12px; align-items:flex-start; padding:12px; border-radius:16px; border:1px solid rgba(167,215,191,.18); background: rgba(2,10,6,.12)}
+    .dot{width:10px; height:10px; border-radius:50%; background: rgba(53,208,127,.8); margin-top:5px}
+    .item .hdr{display:flex; justify-content:space-between; gap:10px; width:100%}
+    .item .sub{color:var(--muted); font-size:12px; margin-top:4px}
+    .right{display:flex; flex-direction:column; gap:14px}
+    .footer-note{font-size:12px; color:rgba(167,215,191,.85)}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="row">
+        <div class="brand">
+          <div class="logo"></div>
+          <div>
+            <div style="font-weight:900; letter-spacing:.2px">Guardioes da Natureza</div>
+            <div class="muted" style="font-size:12px">Shell + Router + Estado global</div>
+          </div>
+        </div>
+        <div class="nav" id="nav">
+          <div class="tab" data-route="/">Home</div>
+          <div class="tab" data-route="/map">Mapa</div>
+          <div class="tab" data-route="/report">Reportar</div>
+          <div class="tab" data-route="/challenges">Desafios</div>
+          <div class="tab" data-route="/profile">Perfil</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <div id="app"><div class="card">Carregando…</div></div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
+

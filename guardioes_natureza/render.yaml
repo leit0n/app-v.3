@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: guardioes-natureza
+    runtime: node
+    plan: starter
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: guardioes-natureza-db
+          property: connectionString
+      - key: ADMIN_USER
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+
+databases:
+  - name: guardioes-natureza-db
+    plan: starter
+    postgresMajorVersion: "16"

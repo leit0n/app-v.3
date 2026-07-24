@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Guardiões da Natureza — Administração</title>
+<meta name="robots" content="noindex, nofollow" />
+<style>
+  :root{
+    --bg:#071b12; --panel:#0e2f21; --line:rgba(53,208,127,.18);
+    --text:#eafff2; --muted:#a7d7bf; --accent:#35d07f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--text)}
+  header{padding:18px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px}
+  header h1{font-size:18px; margin:0}
+  header .muted{color:var(--muted); font-size:13px}
+  main{padding:20px; max-width:1200px; margin:0 auto}
+  .filters{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px}
+  select, button{
+    background:var(--panel); color:var(--text); border:1px solid var(--line);
+    border-radius:10px; padding:8px 12px; font-size:14px; cursor:pointer;
+  }
+  button.primary{background:var(--accent); color:#062; font-weight:700; border:none}
+  table{width:100%; border-collapse:collapse; background:var(--panel); border-radius:14px; overflow:hidden}
+  th, td{padding:10px 12px; text-align:left; border-bottom:1px solid var(--line); font-size:13px; vertical-align:top}
+  th{color:var(--muted); font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:.04em}
+  tr:last-child td{border-bottom:none}
+  .badge{display:inline-block; padding:3px 8px; border-radius:999px; font-size:11px; font-weight:700; background:rgba(53,208,127,.15); border:1px solid var(--line)}
+  .thumb{width:56px; height:56px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid var(--line)}
+  .muted{color:var(--muted)}
+  #modalBg{position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:center; justify-content:center; z-index:20}
+  #modalBg img{max-width:90vw; max-height:90vh; border-radius:12px}
+  #status{margin:10px 0; color:var(--muted); font-size:13px; min-height:18px}
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>🛡️ Guardiões da Natureza — Administração</h1>
+      <div class="muted">Painel interno · não indexado · acesso com password</div>
+    </div>
+    <div class="filters">
+      <select id="stateFilter">
+        <option value="">Todos os estados</option>
+        <option value="Novo">Novo</option>
+        <option value="Encaminhado">Encaminhado</option>
+        <option value="Em_Tratamento">Em Tratamento</option>
+        <option value="Resolvido">Resolvido</option>
+        <option value="Arquivado">Arquivado</option>
+      </select>
+      <select id="categoryFilter">
+        <option value="">Todas as categorias</option>
+        <option value="lixo">Lixo</option>
+        <option value="desmatamento">Desmatamento</option>
+        <option value="incendio">Incêndio</option>
+      </select>
+      <button class="primary" id="refreshBtn">Atualizar</button>
+    </div>
+  </header>
+  <main>
+    <div id="status">A carregar…</div>
+    <table id="table" style="display:none">
+      <thead>
+        <tr>
+          <th>Foto</th><th>#</th><th>Data</th><th>Categoria</th><th>Local</th>
+          <th>Descrição</th><th>Reportado por</th><th>Autoridade</th><th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </main>
+
+  <div id="modalBg"><img id="modalImg" alt="Fotografia do reporte" /></div>
+
+<script>
+const STATES = ['Novo', 'Encaminhado', 'Em_Tratamento', 'Resolvido', 'Arquivado'];
+const tbody = document.getElementById('tbody');
+const table = document.getElementById('table');
+const statusEl = document.getElementById('status');
+const stateFilter = document.getElementById('stateFilter');
+const categoryFilter = document.getElementById('categoryFilter');
+const modalBg = document.getElementById('modalBg');
+const modalImg = document.getElementById('modalImg');
+
+function fmtDate(ts) {
+  try { return new Date(ts).toLocaleString('pt-PT'); } catch { return ts; }
+}
+
+async function load() {
+  statusEl.textContent = 'A carregar…';
+  table.style.display = 'none';
+  const params = new URLSearchParams();
+  if (stateFilter.value) params.set('state', stateFilter.value);
+  if (categoryFilter.value) params.set('category', categoryFilter.value);
+
+  const res = await fetch(`/api/admin/reports?${params.toString()}`);
+  if (res.status === 401) {
+    statusEl.textContent = 'Sessão não autenticada. Recarregue a página e introduza as credenciais.';
+    return;
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    statusEl.textContent = body.error || `Erro ao carregar (HTTP ${res.status}).`;
+    return;
+  }
+  const { reports } = await res.json();
+  tbody.innerHTML = '';
+  for (const r of reports) {
+    const tr = document.createElement('tr');
+
+    const photoTd = document.createElement('td');
+    if (r.hasPhoto) {
+      const img = document.createElement('img');
+      img.className = 'thumb';
+      img.src = `/api/admin/reports/${r.id}/photo`;
+      img.loading = 'lazy';
+      img.onclick = () => { modalImg.src = img.src; modalBg.style.display = 'flex'; };
+      photoTd.appendChild(img);
+    } else {
+      photoTd.innerHTML = '<span class="muted">—</span>';
+    }
+    tr.appendChild(photoTd);
+
+    const cell = (text) => { const td = document.createElement('td'); td.textContent = text ?? '—'; return td; };
+    tr.appendChild(cell(r.id));
+    tr.appendChild(cell(fmtDate(r.createdAt)));
+    tr.appendChild(cell(r.category));
+
+    const locTd = document.createElement('td');
+    locTd.textContent = r.location || '—';
+    locTd.title = `${r.latitude?.toFixed?.(5)}, ${r.longitude?.toFixed?.(5)} (±${Math.round(r.accuracy)}m)`;
+    tr.appendChild(locTd);
+
+    const descTd = document.createElement('td');
+    descTd.textContent = (r.description || '').slice(0, 140);
+    tr.appendChild(descTd);
+
+    tr.appendChild(cell(r.reportedBy || 'convidado'));
+    tr.appendChild(cell(r.authorityName || '—'));
+
+    const stateTd = document.createElement('td');
+    const select = document.createElement('select');
+    for (const s of STATES) {
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s.replace('_', ' ');
+      if (s === r.state) opt.selected = true;
+      select.appendChild(opt);
+    }
+    select.onchange = async () => {
+      select.disabled = true;
+      const res = await fetch(`/api/admin/reports/${r.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: select.value }),
+      });
+      select.disabled = false;
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        alert(body.error || 'Não foi possível atualizar o estado.');
+        select.value = r.state;
+      } else {
+        r.state = select.value;
+      }
+    };
+    stateTd.appendChild(select);
+    tr.appendChild(stateTd);
+
+    tbody.appendChild(tr);
+  }
+  statusEl.textContent = `${reports.length} reporte(s).`;
+  table.style.display = reports.length ? 'table' : 'none';
+}
+
+modalBg.onclick = () => { modalBg.style.display = 'none'; modalImg.src = ''; };
+document.getElementById('refreshBtn').onclick = load;
+stateFilter.onchange = load;
+categoryFilter.onchange = load;
+
+load();
+</script>
+</body>
+</html>
