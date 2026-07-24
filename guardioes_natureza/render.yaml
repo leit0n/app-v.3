@@ -3,7 +3,7 @@ services:
     name: guardioes-natureza
     runtime: node
     plan: starter
-    rootDir: backend
+    rootDir: guardioes_natureza/backend
     buildCommand: npm install
     startCommand: node server.js
     envVars:
