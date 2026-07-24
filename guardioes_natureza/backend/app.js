@@ -75,6 +75,19 @@ function dbUnavailable(res) {
 function createApp({ pool, webRoot } = {}) {
   const app = express();
   const publicRoot = webRoot ? path.resolve(webRoot) : null;
+
+  // Permite que o frontend (ex: alojado no Netlify, noutro domínio) chame esta API.
+  // Configurável via CORS_ORIGIN no .env (uma origem, ou "*" para permitir todas).
+  const corsOrigin = process.env.CORS_ORIGIN || '*';
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', corsOrigin);
+    res.header('Vary', 'Origin');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    next();
+  });
+
   app.use(express.json({ limit: '7mb' }));
 
   app.get('/api/health', async (_req, res, next) => {
